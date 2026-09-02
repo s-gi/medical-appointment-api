@@ -1,0 +1,108 @@
+classDiagram
+    direction TB
+    
+    %% User & Authentication
+    class User {
+        +String id
+        +String email
+        +String hashed_password
+        +UserRole role
+        +Boolean is_active
+        +Boolean is_verified
+        +String failed_login_attempts
+        +DateTime locked_until
+        +DateTime created_at
+        +DateTime updated_at
+    }
+    
+    class UserRole {
+        <<enumeration>>
+        ADMIN
+        DOCTOR
+        PATIENT
+    }
+    
+    %% Profiles
+    class PatientProfile {
+        +String id
+        +String user_id
+        +String first_name_encrypted
+        +String last_name_encrypted
+        +String date_of_birth_encrypted
+        +String phone_encrypted
+        +String insurance_number_encrypted
+        +DateTime created_at
+        +DateTime updated_at
+    }
+    
+    class DoctorProfile {
+        +String id
+        +String user_id
+        +String first_name
+        +String last_name
+        +String specialization
+        +String license_number_encrypted
+        +String consultation_duration_minutes
+        +Boolean is_available
+        +DateTime created_at
+        +DateTime updated_at
+    }
+    
+    class DoctorSchedule {
+        +String id
+        +String doctor_id
+        +String day_of_week
+        +String start_time
+        +String end_time
+        +Boolean is_active
+    }
+    
+    %% Appointments
+    class Appointment {
+        +String id
+        +String patient_id
+        +String doctor_id
+        +DateTime appointment_datetime
+        +DateTime end_datetime
+        +AppointmentStatus status
+        +String reason_encrypted
+        +String notes_encrypted
+        +String cancellation_reason
+        +DateTime created_at
+        +DateTime updated_at
+    }
+    
+    class AppointmentStatus {
+        <<enumeration>>
+        SCHEDULED
+        CONFIRMED
+        CANCELLED
+        COMPLETED
+        NO_SHOW
+    }
+    
+    %% Audit
+    class AuditLog {
+        +String id
+        +String user_id
+        +String action
+        +String resource_type
+        +String resource_id
+        +String ip_address
+        +String user_agent
+        +String details
+        +DateTime created_at
+    }
+    
+    %% Relationships
+    User "1" --> "1" UserRole : has
+    User "1" --> "0..1" PatientProfile : has
+    User "1" --> "0..1" DoctorProfile : has
+    User "1" --> "*" AuditLog : generates
+    
+    DoctorProfile "1" --> "*" DoctorSchedule : has
+    DoctorProfile "1" --> "*" Appointment : receives
+    
+    PatientProfile "1" --> "*" Appointment : books
+    
+    Appointment "1" --> "1" AppointmentStatus : has
