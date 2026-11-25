@@ -6,7 +6,6 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = "change-me-in-production-use-long-random-string"
     encryption_key: str = "change-me-32-byte-key-for-prod!"
-    algorithm: str = "HS256"
     
     # JWT
     access_token_expire_minutes: int = 30

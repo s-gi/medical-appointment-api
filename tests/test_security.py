@@ -1,5 +1,5 @@
 """Unit tests for security functions."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import pytest
 from app.security.password import (
     hash_password,
@@ -170,30 +170,30 @@ class TestJWT:
         data = verify_token(token, expected_type="refresh")
         assert data is None
 
+    def _payload(self, **overrides):
+        now = datetime.now(UTC)
+        p = {"sub": "user-123", "role": "patient", "type": "access",
+             "iat": now, "exp": now + timedelta(minutes=5)}
+        p.update(overrides)
+        return p
+
     def test_reject_token_wrong_algorithm(self):
-        """Token signed with an unexpected algorithm should be rejected.
-
-        Regression test for the algorithm-confusion class of JWT
-        vulnerabilities (e.g. CVE-2024-33663 in python-jose <=3.3.0):
-        verify_token() must not accept a token just because it decodes
-        successfully — it must also reject tokens signed with an
-        algorithm other than the one configured for this app.
-        """
-        from jose import jwt as jose_jwt
+        import jwt as pyjwt
         from app.config import get_settings
+        forged = pyjwt.encode(self._payload(), get_settings().secret_key, algorithm="HS512")
+        assert verify_token(forged, expected_type="access") is None
 
-        settings = get_settings()
-        payload = {
-            "sub": "user-123",
-            "role": "patient",
-            "type": "access",
-            "exp": datetime.utcnow() + timedelta(minutes=5),
-            "iat": datetime.utcnow(),
-        }
-        forged_token = jose_jwt.encode(payload, settings.secret_key, algorithm="HS512")
+    def test_reject_alg_none(self):
+        import jwt as pyjwt
+        forged = pyjwt.encode(self._payload(), None, algorithm="none")
+        assert verify_token(forged, expected_type="access") is None
 
-        data = verify_token(forged_token, expected_type="access")
-        assert data is None
+    def test_reject_missing_required_claim(self):
+        import jwt as pyjwt
+        from app.config import get_settings
+        p = self._payload(); p.pop("exp")
+        token = pyjwt.encode(p, get_settings().secret_key, algorithm="HS256")
+        assert verify_token(token, expected_type="access") is None
     
     def test_invalid_token(self):
         """Invalid token should not verify."""
